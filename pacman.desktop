@@ -1,0 +1,10 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Pacman
+Comment=Pacman
+Exec=pacman-tauri
+Icon=pacman-tauri
+Categories=Game;
+Terminal=false
+StartupNotify=true
