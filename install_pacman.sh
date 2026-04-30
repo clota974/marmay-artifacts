@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Usage: PKG_URL=https://... GITHUB_TOKEN=ghp_... DESKTOP_URL=https://... ./install_deb.sh
+# Usage: PKG_URL=https://... GITHUB_TOKEN=ghp_... DESKTOP_URL=https://... ./install_pacman.sh
 
 PKG_URL="${1:-${PKG_URL:-}}"
 GITHUB_TOKEN="${2:-${GITHUB_TOKEN:-}}"
-DESKTOP_URL="${3:-${DESKTOP_URL:-}}"
+DESKTOP_URL="https://raw.githubusercontent.com/clota974/marmay-artifacts/refs/heads/main/pacman.desktop"
 
 if [[ -z "$PKG_URL" ]]; then
   echo "Erreur : PKG_URL non défini." >&2
@@ -22,16 +22,27 @@ if [[ -z "$DESKTOP_URL" ]]; then
   exit 1
 fi
 
+# unzip n'est pas toujours présent sur Raspbian minimal
+if ! command -v unzip &>/dev/null; then
+  echo "==> Installation de unzip..."
+  sudo apt-get install -y unzip
+fi
+
 WORKDIR=$(mktemp -d)
 trap 'rm -rf "$WORKDIR"' EXIT
 
 # --- Téléchargement du .deb (repo privé) ---
 echo "==> Téléchargement du paquet depuis : $PKG_URL"
 ZIP_FILE="$WORKDIR/package.zip"
+
+
+# -L : suit la redirection 302 que GitHub renvoie vers le stockage blob
 curl -fsSL \
-  -H "Authorization: token $GITHUB_TOKEN" \
+  -H "Authorization: Bearer $GITHUB_TOKEN" \
   -H "Accept: application/octet-stream" \
   "$PKG_URL" -o "$ZIP_FILE"
+
+chmod 777 $ZIP_FILE
 
 echo "==> Décompression..."
 unzip -q "$ZIP_FILE" -d "$WORKDIR/extracted"
@@ -56,13 +67,17 @@ DESKTOP_DIR="${XDG_DESKTOP_DIR:-}"
 if [[ -z "$DESKTOP_DIR" ]]; then
   if [[ -d "$HOME/Bureau" ]]; then
     DESKTOP_DIR="$HOME/Bureau"
-  else
+  elif [[ -d "$HOME/Desktop" ]]; then
     DESKTOP_DIR="$HOME/Desktop"
+  else
+    DESKTOP_DIR="$HOME"
   fi
 fi
 
 echo "==> Copie du fichier .desktop sur le bureau : $DESKTOP_DIR"
 cp "$DESKTOP_FILE" "$DESKTOP_DIR/pacman-tauri.desktop"
-chmod 755 "$DESKTOP_DIR/pacman-tauri.desktop"
+chmod +x "$DESKTOP_DIR/pacman-tauri.desktop"
 
 echo "==> Installation terminée avec succès."
+echo "\n\n"
+echo "*** L'application est installée sur le bureau ***"
